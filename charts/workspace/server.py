@@ -959,7 +959,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
         import urllib.request
         import urllib.parse
         try:
-            normalized_path = self.path.replace('/oauth', '').replace('/browser', '')
+            normalized_path = self.path.replace('/oauth', '')
             parsed = urllib.parse.urlsplit(normalized_path)
             vnc_path = parsed.path[len('/vnc/'):]
             vnc_url = f"http://localhost:6081/{vnc_path}"
