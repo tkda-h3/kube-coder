@@ -660,34 +660,34 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path in ["/browser", "/browser/"]:
             # Legacy browser path - redirect to dashboard
             self.path = "/dashboard.html"
-        elif self.path == "/health":
+        elif normalized_path == "/health":
             self.send_health_check()
             return
-        elif self.path == "/health/vscode":
+        elif normalized_path == "/health/vscode":
             self.send_vscode_health()
             return
-        elif self.path == "/health/terminal":
+        elif normalized_path == "/health/terminal":
             self.send_terminal_health()
             return
-        elif self.path == "/health/browser":
+        elif normalized_path == "/health/browser":
             self.send_browser_health()
             return
-        elif self.path == "/metrics":
+        elif normalized_path == "/metrics":
             self.send_metrics()
             return
-        elif self.path == "/api/github/status":
+        elif normalized_path == "/api/github/status":
             self.send_github_status()
             return
-        elif self.path == "/api/github/config":
+        elif normalized_path == "/api/github/config":
             self.send_git_config()
             return
-        elif self.path == "/vnc" or self.path == "/vnc/":
+        elif normalized_path == "/vnc" or normalized_path == "/vnc/":
             self.send_vnc_viewer()
             return
-        elif self.path == "/vnc-proxy" or self.path == "/vnc-proxy/":
+        elif normalized_path == "/vnc-proxy" or normalized_path == "/vnc-proxy/":
             self.redirect_to_vnc()
             return
-        elif self.path.startswith("/vnc/"):
+        elif normalized_path.startswith("/vnc/"):
             self.proxy_vnc_request()
             return
 

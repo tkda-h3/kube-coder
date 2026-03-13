@@ -742,7 +742,7 @@
                 <p>Full-featured code editor with extensions</p>
             </a>
 
-            <a href="/oauth/terminal" class="service-card terminal">
+            <a href="/oauth/terminal" class="service-card terminal" data-terminal-link="true">
                 <div class="health-indicator" id="terminal-health"></div>
                 <div class="service-icon">⚡</div>
                 <h3>Terminal</h3>
@@ -885,7 +885,7 @@
                     <div id="gh-auth-instructions" class="gh-instructions" style="display: none;">
                         <strong>To authenticate with GitHub CLI:</strong>
                         <ol>
-                            <li>Open <a href="/oauth/terminal" target="_blank">Terminal</a></li>
+                            <li>Open <a href="/oauth/terminal" target="_blank" data-terminal-link="true">Terminal</a></li>
                             <li>Run: <code>gh auth login</code></li>
                             <li>Select GitHub.com and HTTPS</li>
                             <li>Follow the prompts to authenticate</li>
@@ -943,6 +943,7 @@
             // Hide loading, show content
             document.getElementById('auth-loading').style.display = 'none';
             document.getElementById('auth-content').classList.add('authenticated');
+            applyTerminalLinks();
 
             // Initialize dashboard features
             checkServicesHealth();
@@ -1026,6 +1027,25 @@
             } catch (error) {
                 console.error('Failed to fetch metrics:', error);
             }
+        }
+
+        function getTerminalUrl() {
+            const { protocol, hostname } = window.location;
+            const novncPrefix = 'kube-coder-novnc.';
+            if (hostname.startsWith(novncPrefix)) {
+                return `${protocol}//kube-coder-ttyd.${hostname.slice(novncPrefix.length)}/`;
+            }
+            if (hostname.startsWith('kube-coder-ttyd.')) {
+                return `${protocol}//${hostname}/`;
+            }
+            return '/oauth/terminal';
+        }
+
+        function applyTerminalLinks() {
+            const terminalUrl = getTerminalUrl();
+            document.querySelectorAll('[data-terminal-link="true"]').forEach((link) => {
+                link.href = terminalUrl;
+            });
         }
 
         function updateMetricsDisplay(data) {
@@ -1467,7 +1487,7 @@
                 });
                 if (response.ok) {
                     // Open terminal in a new tab — the wrapper script will auto-attach
-                    window.open('/oauth/terminal', '_blank');
+                    window.open(getTerminalUrl(), '_blank');
                 } else {
                     showTaskToast('Failed to prepare terminal session');
                 }
@@ -1569,7 +1589,7 @@
         // Add keyboard shortcut for quick access
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === '`') {
-                window.location.href = '/oauth/terminal';
+                window.location.href = getTerminalUrl();
             } else if (e.ctrlKey && e.key === '1') {
                 window.location.href = '/oauth';
             } else if (e.ctrlKey && e.key === '2') {
