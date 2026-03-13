@@ -1229,6 +1229,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             # Test browser installation
             browser_paths = [
                 '/usr/local/bin/browser',
+                '/usr/local/bin/firefox',
                 '/usr/bin/lynx',
                 '/usr/bin/w3m', 
                 '/usr/bin/firefox-esr',
@@ -1293,7 +1294,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
                     break
             
             if not browser_cmd:
-                self.send_error_response('No Chrome browser found. Download may have failed.')
+                self.send_error_response('No browser found. Installation may have failed.')
                 return
             
             env = os.environ.copy()
@@ -1312,14 +1313,14 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             time.sleep(2)
             
             if process.poll() is None:  # Process is still running
-                self.send_success_response(f'✅ Chrome launched successfully (PID: {process.pid})')
+                self.send_success_response(f'✅ Browser launched successfully (PID: {process.pid})')
             else:
-                self.send_error_response('Chrome process exited immediately')
+                self.send_error_response('Browser process exited immediately')
                 
         except FileNotFoundError:
-            self.send_error_response('Chrome not found. Please install Chrome first.')
+            self.send_error_response('Browser not found. Please install a browser first.')
         except Exception as e:
-            self.send_error_response(f'Error launching Chrome: {str(e)}')
+            self.send_error_response(f'Error launching browser: {str(e)}')
     
     def open_localhost(self):
         try:
@@ -1347,7 +1348,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
                     break
             
             if not browser_cmd:
-                self.send_error_response('No Chrome browser found. Download may have failed.')
+                self.send_error_response('No browser found. Installation may have failed.')
                 return
             
             # Launch browser with localhost URL
@@ -1363,14 +1364,14 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             time.sleep(1)
             
             if process.poll() is None:  # Process is still running
-                self.send_success_response(f'✅ Chrome opened with localhost:8080 (PID: {process.pid})')
+                self.send_success_response(f'✅ Browser opened with localhost:8080 (PID: {process.pid})')
             else:
-                self.send_error_response('Chrome process exited immediately')
+                self.send_error_response('Browser process exited immediately')
                 
         except FileNotFoundError:
-            self.send_error_response('Chrome not found. Please install Chrome first.')
+            self.send_error_response('Browser not found. Please install a browser first.')
         except Exception as e:
-            self.send_error_response(f'Error opening localhost in Chrome: {str(e)}')
+            self.send_error_response(f'Error opening localhost in browser: {str(e)}')
 
 if __name__ == "__main__":
     # Change to the directory containing our files
