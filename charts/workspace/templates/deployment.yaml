@@ -68,6 +68,7 @@ spec:
             DISPLAY=:99 setxkbmap us &&
             DISPLAY=:99 fluxbox &
             sleep 1 &&
+            . /usr/local/bin/browser-ime-env.sh &&
             x11vnc -display :99 -nopw -listen localhost -xkb -forever -shared -repeat -cursor -cursorpos -24to32 -nobell -noipv6 &
             sleep 2 &&
             echo "Waiting for VNC server..." &&
