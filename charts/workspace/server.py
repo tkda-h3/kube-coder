@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import http.server
+import select
+import socket
 import socketserver
 import subprocess
 import os
@@ -652,47 +654,52 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         # Normalize path - strip /oauth and /browser prefixes from rewrites
         normalized_path = self.path.replace('/oauth', '').replace('/browser', '')
+        normalized_route = urllib.parse.urlsplit(normalized_path).path
         if normalized_path == '' or normalized_path == '/':
             normalized_path = '/'
+            normalized_route = '/'
 
-        if normalized_path in ["/", "/dashboard", "/dashboard/"]:
+        if normalized_route in ["/", "/dashboard", "/dashboard/"]:
             self.path = "/dashboard.html"
         elif self.path in ["/browser", "/browser/"]:
             # Legacy browser path - redirect to dashboard
             self.path = "/dashboard.html"
-        elif normalized_path == "/health":
+        elif normalized_route == "/health":
             self.send_health_check()
             return
-        elif normalized_path == "/health/vscode":
+        elif normalized_route == "/health/vscode":
             self.send_vscode_health()
             return
-        elif normalized_path == "/health/terminal":
+        elif normalized_route == "/health/terminal":
             self.send_terminal_health()
             return
-        elif normalized_path == "/health/browser":
+        elif normalized_route == "/health/browser":
             self.send_browser_health()
             return
-        elif normalized_path == "/metrics":
+        elif normalized_route == "/metrics":
             self.send_metrics()
             return
-        elif normalized_path == "/api/github/status":
+        elif normalized_route == "/api/github/status":
             self.send_github_status()
             return
-        elif normalized_path == "/api/github/config":
+        elif normalized_route == "/api/github/config":
             self.send_git_config()
             return
-        elif normalized_path == "/vnc" or normalized_path == "/vnc/":
+        elif normalized_route == "/vnc" or normalized_route == "/vnc/":
             self.send_vnc_viewer()
             return
-        elif normalized_path == "/vnc-proxy" or normalized_path == "/vnc-proxy/":
+        elif normalized_route == "/vnc-proxy" or normalized_route == "/vnc-proxy/":
             self.redirect_to_vnc()
             return
-        elif normalized_path.startswith("/vnc/"):
+        elif normalized_route == "/websockify":
+            self.proxy_websockify_websocket()
+            return
+        elif normalized_route.startswith("/vnc/"):
             self.proxy_vnc_request()
             return
 
         # --- Claude Task API (GET) ---
-        claude_path = normalized_path
+        claude_path = normalized_route
         if claude_path == '/api/claude/tasks':
             self.handle_claude_list_tasks()
             return
@@ -988,6 +995,62 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(error_html.encode())
+
+    def proxy_websockify_websocket(self):
+        upstream = None
+        try:
+            if self.headers.get('Upgrade', '').lower() != 'websocket':
+                self.send_error(400, "WebSocket upgrade required")
+                return
+
+            normalized_path = self.path.replace('/oauth', '')
+            parsed = urllib.parse.urlsplit(normalized_path)
+            upstream_path = parsed.path
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+
+            upstream = socket.create_connection(("127.0.0.1", 6081), timeout=5)
+            upstream.settimeout(None)
+
+            request_lines = [f"GET {upstream_path} HTTP/1.1", "Host: 127.0.0.1:6081"]
+            for key, value in self.headers.items():
+                if key.lower() == 'host':
+                    continue
+                request_lines.append(f"{key}: {value}")
+            request_data = ("\r\n".join(request_lines) + "\r\n\r\n").encode("latin-1")
+            upstream.sendall(request_data)
+
+            response = b""
+            while b"\r\n\r\n" not in response:
+                chunk = upstream.recv(4096)
+                if not chunk:
+                    raise ConnectionError("Upstream websockify closed during handshake")
+                response += chunk
+
+            self.connection.sendall(response)
+            self.close_connection = True
+
+            sockets = [self.connection, upstream]
+            while True:
+                readable, _, _ = select.select(sockets, [], [], 60)
+                if not readable:
+                    continue
+
+                for source in readable:
+                    data = source.recv(65536)
+                    if not data:
+                        return
+                    target = upstream if source is self.connection else self.connection
+                    target.sendall(data)
+        except Exception as e:
+            if not self.wfile.closed:
+                self.send_error(502, f"WebSocket proxy failed: {e}")
+        finally:
+            if upstream is not None:
+                try:
+                    upstream.close()
+                except OSError:
+                    pass
     
     def do_POST(self):
         try:
@@ -1373,6 +1436,11 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_error_response(f'Error opening localhost in browser: {str(e)}')
 
+class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 if __name__ == "__main__":
     # Change to the directory containing our files
     os.chdir('/tmp/browser')
@@ -1395,5 +1463,5 @@ if __name__ == "__main__":
     print("  GET  /api/claude/auth/token         - Get bearer token (OAuth2 only)")
     print("  POST /api/claude/auth/token/regenerate - Regenerate token (OAuth2 only)")
     
-    with socketserver.TCPServer(("", 6080), BrowserHandler) as httpd:
+    with ThreadingTCPServer(("", 6080), BrowserHandler) as httpd:
         httpd.serve_forever()
