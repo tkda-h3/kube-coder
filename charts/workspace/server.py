@@ -976,53 +976,6 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             with urllib.request.urlopen(vnc_url) as response:
                 content = response.read()
                 content_type = response.headers.get('Content-Type', 'text/html')
-                if (
-                    vnc_path == "vnc.html"
-                    and "text/html" in content_type
-                    and urllib.parse.parse_qs(parsed.query).get("autokeyboard") == ["true"]
-                ):
-                    injection = b"""<script>
-(function () {
-    function enableKeyboardCapture() {
-        const input = document.getElementById('noVNC_keyboardinput');
-        if (!input) {
-            return;
-        }
-        const button = document.getElementById('noVNC_keyboard_button');
-        if (button) {
-            button.classList.add('noVNC_selected');
-        }
-        if (window.UI && UI.rfb) {
-            UI.rfb.focusOnClick = false;
-        }
-        input.focus({ preventScroll: true });
-    }
-
-    function scheduleKeyboardCapture(event) {
-        const controlbar = document.getElementById('noVNC_control_bar');
-        if (controlbar && controlbar.contains(event.target)) {
-            return;
-        }
-        window.requestAnimationFrame(enableKeyboardCapture);
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        let attempts = 0;
-        function bootstrapKeyboardCapture() {
-            enableKeyboardCapture();
-            if ((!window.UI || !UI.rfb) && attempts < 50) {
-                attempts += 1;
-                window.setTimeout(bootstrapKeyboardCapture, 100);
-            }
-        }
-        bootstrapKeyboardCapture();
-    });
-
-    document.addEventListener('pointerdown', scheduleKeyboardCapture, true);
-    window.addEventListener('focus', enableKeyboardCapture);
-})();
-</script></body>"""
-                    content = content.replace(b"</body>", injection, 1)
                 self.send_response(200)
                 self.send_header('Content-type', content_type)
                 self.end_headers()

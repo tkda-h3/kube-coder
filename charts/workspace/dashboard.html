@@ -1053,8 +1053,8 @@
             const novncHost = resolveWorkspaceHost('kube-coder-novnc.');
             const base = novncHost || '';
             const query = fullscreen
-                ? 'autoconnect=true&resize=scale&fullscreen=true&autokeyboard=true'
-                : 'autoconnect=true&resize=scale&autokeyboard=true';
+                ? 'autoconnect=true&resize=scale&fullscreen=true'
+                : 'autoconnect=true&resize=scale';
             return `${base}/oauth/vnc/vnc.html?${query}`;
         }
 
