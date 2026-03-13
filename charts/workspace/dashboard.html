@@ -735,7 +735,7 @@
             </div>
 
             <div class="services-grid">
-            <a href="/oauth/vscode/?folder=/home/dev" class="service-card ide">
+            <a href="/oauth/vscode/?folder=/home/dev" class="service-card ide" data-ide-link="true">
                 <div class="health-indicator" id="ide-health"></div>
                 <div class="service-icon">💻</div>
                 <h3>VS Code IDE</h3>
@@ -943,7 +943,7 @@
             // Hide loading, show content
             document.getElementById('auth-loading').style.display = 'none';
             document.getElementById('auth-content').classList.add('authenticated');
-            applyTerminalLinks();
+            applyWorkspaceLinks();
 
             // Initialize dashboard features
             checkServicesHealth();
@@ -1029,20 +1029,41 @@
             }
         }
 
-        function getTerminalUrl() {
+        function resolveWorkspaceHost(targetPrefix) {
             const { protocol, hostname } = window.location;
-            const novncPrefix = 'kube-coder-novnc.';
-            if (hostname.startsWith(novncPrefix)) {
-                return `${protocol}//kube-coder-ttyd.${hostname.slice(novncPrefix.length)}/`;
+            for (const prefix of ['kube-coder-novnc.', 'kube-coder-ttyd.', 'kube-coder.']) {
+                if (hostname.startsWith(prefix)) {
+                    return `${protocol}//${targetPrefix}${hostname.slice(prefix.length)}`;
+                }
             }
-            if (hostname.startsWith('kube-coder-ttyd.')) {
-                return `${protocol}//${hostname}/`;
-            }
-            return '/oauth/terminal';
+            return null;
         }
 
-        function applyTerminalLinks() {
+        function getIdeUrl() {
+            const ideHost = resolveWorkspaceHost('kube-coder.');
+            return ideHost ? `${ideHost}/` : '/oauth/vscode/?folder=/home/dev';
+        }
+
+        function getTerminalUrl() {
+            const terminalHost = resolveWorkspaceHost('kube-coder-ttyd.');
+            return terminalHost ? `${terminalHost}/` : '/oauth/terminal';
+        }
+
+        function getVncUrl(fullscreen = false) {
+            const novncHost = resolveWorkspaceHost('kube-coder-novnc.');
+            const base = novncHost || '';
+            const query = fullscreen
+                ? 'autoconnect=true&resize=scale&fullscreen=true'
+                : 'autoconnect=true&resize=scale';
+            return `${base}/oauth/vnc/vnc.html?${query}`;
+        }
+
+        function applyWorkspaceLinks() {
+            const ideUrl = getIdeUrl();
             const terminalUrl = getTerminalUrl();
+            document.querySelectorAll('[data-ide-link="true"]').forEach((link) => {
+                link.href = ideUrl;
+            });
             document.querySelectorAll('[data-terminal-link="true"]').forEach((link) => {
                 link.href = terminalUrl;
             });
@@ -1227,7 +1248,7 @@
             const frame = document.getElementById('vnc-frame');
             
             // Point to the OAuth2-protected VNC endpoint
-            const vncUrl = '/oauth/vnc-direct/vnc.html?autoconnect=true&resize=scale';
+            const vncUrl = getVncUrl();
             frame.src = vncUrl;
             container.style.display = 'block';
             showBrowserStatus('✅ VNC viewer loaded. Launch a browser first to see the desktop.');
@@ -1243,7 +1264,7 @@
 
         function openFullscreenVNC() {
             showBrowserStatus('🖥️ Opening fullscreen VNC viewer...');
-            const vncUrl = '/oauth/vnc-direct/vnc.html?autoconnect=true&resize=scale&fullscreen=true';
+            const vncUrl = getVncUrl(true);
             window.open(vncUrl, '_blank', 'width=1280,height=720,scrollbars=no,resizable=yes');
             showBrowserStatus('✅ Fullscreen VNC viewer opened in new window.');
         }

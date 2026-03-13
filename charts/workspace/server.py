@@ -893,9 +893,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({'error': str(e)}, 500)
 
     def send_vnc_viewer(self):
-        # Instead of embedding, redirect to the noVNC URL directly
-        host = self.headers.get('Host', 'localhost').split(':')[0]
-        vnc_url = f"https://{host}/vnc-direct/vnc.html?host={host}&port=6081&autoconnect=true&resize=scale"
+        vnc_url = "/oauth/vnc/vnc.html?autoconnect=true&resize=scale"
         
         vnc_html = f'''<!DOCTYPE html>
 <html>
@@ -919,7 +917,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
         <p>Click the button below to open the VNC viewer in a new window:</p>
         <a href="{vnc_url}" target="_blank" class="btn">Open VNC Viewer</a>
         <p><small>If the VNC viewer doesn't load, make sure you've launched a browser first.</small></p>
-        <p><a href="/browser/">← Back to Browser Controls</a></p>
+        <p><a href="/oauth/">← Back to Browser Controls</a></p>
     </div>
 </body>
 </html>'''
@@ -947,7 +945,7 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
 <body>
     <h1>VNC Connection Error</h1>
     <p>Unable to connect to VNC server: {str(e)}</p>
-    <p><a href="/browser/">← Back to Browser Controls</a></p>
+    <p><a href="/oauth/">← Back to Browser Controls</a></p>
     <p>Make sure a browser is launched first, then try again.</p>
 </body>
 </html>'''
@@ -961,13 +959,12 @@ class BrowserHandler(http.server.SimpleHTTPRequestHandler):
         import urllib.request
         import urllib.parse
         try:
-            # Remove /vnc/ from the path and proxy to localhost:6081
-            vnc_path = self.path[5:]  # Remove '/vnc/' prefix
+            normalized_path = self.path.replace('/oauth', '').replace('/browser', '')
+            parsed = urllib.parse.urlsplit(normalized_path)
+            vnc_path = parsed.path[len('/vnc/'):]
             vnc_url = f"http://localhost:6081/{vnc_path}"
-            
-            # Add query string if present
-            if '?' in self.path:
-                vnc_url = f"http://localhost:6081/{vnc_path}"
+            if parsed.query:
+                vnc_url = f"{vnc_url}?{parsed.query}"
             
             with urllib.request.urlopen(vnc_url) as response:
                 content = response.read()
