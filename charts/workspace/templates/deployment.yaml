@@ -91,7 +91,7 @@ spec:
             cp /browser-config/* /tmp/browser/ &&
             cd /tmp/browser &&
             python3 server.py &
-            HOME=/home/dev ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-${ANTHROPIC_AUTH_TOKEN:-}}" CLAUDE_CONFIG_DIR=/home/dev/.claude cloudcli & 
+            HOME=/home/dev ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" CLAUDE_CONFIG_DIR=/home/dev/.claude cloudcli & 
             echo "All services started. Entering monitoring loop..." &&
             while true; do
               sleep 30;
