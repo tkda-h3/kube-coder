@@ -51,7 +51,6 @@ spec:
             ln -sf /home/dev/.credentials/.config/git/config ~/.gitconfig &&
             ln -sf /home/dev/.credentials/.config/gh ~/.config/gh &&
             test -f /home/dev/CLAUDE.md || cp /claude-config/CLAUDE.md /home/dev/CLAUDE.md &&
-            sudo npm install -g @anthropic-ai/claude-code@latest > /tmp/claude-update.log 2>&1 &&
             if [ -n "$GITHUB_APP_ID" ]; then
               python3 /github-app/github-app-token.py --once &&
               source /home/dev/.credentials/.github-env &&
@@ -74,17 +73,10 @@ spec:
             sleep 2 &&
             echo "Waiting for VNC server..." &&
             for i in {1..30}; do netstat -tln 2>/dev/null | grep :5900 && break || sleep 1; done &&
-            echo "Setting up noVNC..." &&
-            mkdir -p /tmp/novnc &&
-            cd /tmp/novnc &&
-            wget -q https://github.com/novnc/noVNC/archive/refs/tags/v1.4.0.tar.gz -O novnc.tar.gz &&
-            tar -xzf novnc.tar.gz --strip-components=1 &&
-            echo "Starting websockify in background..." &&
+            echo "Starting websockify..." &&
             pkill -f websockify || true &&
-            sleep 1 &&
             (
-              cd /tmp/novnc &&
-              exec websockify --web=/tmp/novnc --heartbeat=30 6081 localhost:5900 > /tmp/websockify.log 2>&1
+              exec websockify --web=/usr/share/novnc/ --heartbeat=30 6081 localhost:5900 > /tmp/websockify.log 2>&1
             ) &
             sleep 2 &&
             echo "Starting browser server..." &&
@@ -105,13 +97,20 @@ spec:
                 echo "Restarting browser server...";
                 cd /tmp/browser && python3 server.py &
               fi;
+              if ! pgrep -f "ttyd" > /dev/null; then
+                echo "ttyd not running, restarting...";
+                ttyd --port 7681 --interface 0.0.0.0 --writable -w /home/dev /terminal-scripts/terminal-entry.sh &
+              fi;
+              if ! pgrep -f "cloudcli" > /dev/null; then
+                echo "cloudcli not running, restarting...";
+                HOME=/home/dev ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" CLAUDE_CONFIG_DIR=/home/dev/.claude cloudcli &
+              fi;
               if ! netstat -tln 2>/dev/null | grep :6081 > /dev/null; then
                 echo "Websockify not listening, restarting...";
                 pkill -f websockify || true;
                 sleep 1;
                 (
-                  cd /tmp/novnc &&
-                  exec websockify --web=/tmp/novnc --heartbeat=30 6081 localhost:5900 >> /tmp/websockify.log 2>&1
+                  exec websockify --web=/usr/share/novnc/ --heartbeat=30 6081 localhost:5900 >> /tmp/websockify.log 2>&1
                 ) &
               fi;
             done
