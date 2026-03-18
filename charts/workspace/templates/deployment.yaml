@@ -59,6 +59,7 @@ spec:
               grep -q 'profile.d-github-env' ~/.bashrc 2>/dev/null || echo '[ -f /home/dev/.profile.d-github-env ] && source /home/dev/.profile.d-github-env' >> ~/.bashrc &&
               python3 /github-app/github-app-token.py --daemon &
             fi &&
+            rm -f /home/dev/.local/share/code-server/*.sock &&
             code-server --bind-addr 0.0.0.0:8080 --auth none /home/dev &
             ttyd --port 7681 --interface 0.0.0.0 --writable -w /home/dev /terminal-scripts/terminal-entry.sh &
             export DISPLAY=:99 &&
@@ -94,7 +95,12 @@ spec:
             HOME=/home/dev ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" CLAUDE_CONFIG_DIR=/home/dev/.claude cloudcli & 
             echo "All services started. Entering monitoring loop..." &&
             while true; do
-              sleep 30;
+              sleep 5;
+              if ! pgrep -f "code-server" > /dev/null; then
+                echo "code-server not running, restarting...";
+                rm -f /home/dev/.local/share/code-server/*.sock;
+                code-server --bind-addr 0.0.0.0:8080 --auth none /home/dev &
+              fi;
               if ! pgrep -f "python3 server.py" > /dev/null; then
                 echo "Restarting browser server...";
                 cd /tmp/browser && python3 server.py &
